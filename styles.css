@@ -1,0 +1,98 @@
+/* Layout */
+
+body {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#calculator {
+  height: 400px;
+  width: 300px;
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+#display {
+  flex: 1;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+#keys {
+  flex-basis: 75%;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.row {
+  flex: 1;
+  display: flex;
+  flex-flow: row nowrap;
+}
+
+.row > * {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.row .wide {
+  flex: 2;
+}
+
+/* Color */
+
+body {
+  color: hsl(240, 98%, 98%);
+  background-color: hsl(240, 60%, 8%);
+}
+
+#calculator {
+  background-color: hsl(240, 60%, 35%);
+  border: 1px solid hsl(240, 80%, 65%);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+#display {
+  background-color: hsl(240, 50%, 20%);
+}
+
+.digit {
+  background-color: hsl(240, 60%, 45%);
+}
+
+.operator {
+  background-color: hsl(240, 80%, 65%);
+}
+
+.row {
+  border-top: 2px solid hsl(240, 50%, 20%);
+}
+
+.row > *:not(:last-child) {
+  border-right: 2px solid hsl(240, 50%, 20%);
+}
+
+/* pad double-wide key to account for missing interior border */
+.row .wide {
+  padding: 0 1px;
+}
+
+/* Font & Text */
+
+body {
+  font-family: Cousine, 'Courier New', Courier, monospace;
+  font-size: 125%;
+}
+
+#display {
+  font-size: 200%;
+  padding: 5px 10px;
+}
