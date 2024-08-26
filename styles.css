@@ -8,8 +8,8 @@ body {
 }
 
 #calculator {
-  height: 400px;
-  width: 300px;
+  height: 300px;
+  width: 360px;
   box-sizing: border-box;
   display: flex;
   flex-flow: column nowrap;
@@ -26,6 +26,12 @@ body {
 #keys {
   flex-basis: 80%;
   display: flex;
+  flex-flow: row nowrap;
+}
+
+.rows {
+  flex: 3;
+  display: flex;
   flex-flow: column nowrap;
 }
 
@@ -35,14 +41,26 @@ body {
   flex-flow: row nowrap;
 }
 
-.row > * {
+.columns {
+  flex: 2;
+  display: flex;
+  flex-flow: row nowrap;
+}
+
+.column {
+  flex: 1;
+  display: flex;
+  flex-flow: column nowrap;
+}
+
+.row > *, .column >* {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-.row .wide {
+.row .wide, .column .tall {
   flex: 2;
 }
 
@@ -72,11 +90,11 @@ body {
   background-color: hsl(240, 80%, 65%);
 }
 
-.row {
+.row, .column > * {
   border-top: 2px solid hsl(240, 50%, 20%);
 }
 
-.row > *:not(:last-child) {
+.row > *, .column:not(:last-child) {
   border-right: 2px solid hsl(240, 50%, 20%);
 }
 
@@ -88,19 +106,24 @@ body {
   cursor: default;
 }
 
-/* pad double-wide key to account for missing interior border */
+/* pad wide or tall keys to account for missing interior border */
+
 .row .wide {
   padding: 0 1px;
+}
+
+.column .tall {
+  padding: 1px 0;
 }
 
 /* Font & Text */
 
 body {
   font-family: Cousine, 'Courier New', Courier, monospace;
-  font-size: 125%;
+  font-size: 150%;
 }
 
 #display {
-  font-size: 200%;
+  font-size: 175%;
   padding: 15px 10px 0;
 }
