@@ -104,10 +104,6 @@ body {
   filter: brightness(150%);
 }
 
-:hover {
-  cursor: default;
-}
-
 /* pad wide or tall keys to account for missing interior border */
 
 .row .wide {
@@ -129,3 +125,16 @@ body {
   font-size: 175%;
   padding: 15px 10px 0;
 }
+
+/* Prevent Text Selection */
+
+#keys {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+:hover {
+  cursor: default;
+}
+
