@@ -72,33 +72,35 @@ body {
 }
 
 #calculator {
-  background-color: hsl(240, 60%, 35%);
+  background-color: hsl(240, 50%, 20%);
   border: 1px solid hsl(240, 80%, 65%);
   border-radius: 20px;
   overflow: hidden;
 }
 
-#display {
-  background-color: hsl(240, 50%, 20%);
+.row > *, .column > * {
+  background-color: hsl(240, 60%, 35%);
 }
 
-.digit {
+.row > *.digit, .column > *.digit {
   background-color: hsl(240, 60%, 45%);
 }
 
-.operator {
+.row > *.operator, .column > *.operator {
   background-color: hsl(240, 80%, 65%);
 }
 
 .row, .column > * {
-  border-top: 2px solid hsl(240, 50%, 20%);
+  margin-top: 2px;
 }
 
 .row > *, .column:not(:last-child) {
-  border-right: 2px solid hsl(240, 50%, 20%);
+  margin-right: 2px;
 }
 
-.row > *:active {
+/* Mouse */
+
+.row > *:active, .column > *:active {
   filter: brightness(150%);
 }
 

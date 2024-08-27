@@ -1,5 +1,9 @@
 // Events
 
+function initializeListeners() {
+  document.getElementById("keys").addEventListener("click", onClickKeys);
+}
+
 function onClickKeys(event) {
   const key = event.target;
 
@@ -7,11 +11,11 @@ function onClickKeys(event) {
     case "AC":
       onClickAllClear();
       break;
+    case "CE":
+      onClickClearEntry();
+      break;
     case "+/-":
       onClickPlusMinus();
-      break;
-    case "%":
-      onClickPercent();
       break;
     case ".":
       onClickDecimal();
@@ -23,68 +27,71 @@ function onClickKeys(event) {
 }
 
 function onClickAllClear() {
-  displayNumber.reset();
-  prevNumber   =    0;
-  prevOperator = null;
+  clearEntry();
+  clearMemory();
   refreshDisplay();
 }
 
+function onClickClearEntry() {
+  clearEntry();
+  refreshDisplay();
+  setClearKeyToAllClear();
+}
+
 function onClickPlusMinus() {
-  displayNumber.togglePlusMinus();
+  entry.togglePlusMinus();
   refreshDisplay();
 }
 
 function onClickDecimal() {
-  displayNumber.appendDecimal();
-  refreshDisplay();
-}
-
-function onClickPercent() {
-  // TO-DO
+  switchToInputMode();
+  entry.appendDecimal();
   refreshDisplay();
 }
 
 function onClickDigit(event) {
   const digit = event.target.textContent;
-  if (isResult) {
-    displayNumber.reset();
-    isResult = !isResult;
-  };
-  displayNumber.appendDigit(digit);
+
+  switchToInputMode();
+  entry.appendDigit(digit);
   refreshDisplay();
 }
 
 function onClickOperator(event) {
+  if (mode == "output") return;
+
   let currOperator = event.target.id;
-  let currNumber   = displayNumber.toNumber();
+  let currNumber   = entry.toNumber();
 
   if (prevOperator) {
-    currNumber    = operate(prevOperator, prevNumber, currNumber);
-    displayNumber = new DisplayNumber(currNumber);
+    currNumber = operate(prevOperator, prevNumber, currNumber);
+    setEntry(currNumber);
     refreshDisplay();
   };
 
-  if (currOperator == "equals") currOperator = null;
+  if (currOperator == "equals") {
+    currOperator = null;
+  } else {
+    switchToOutputMode();
+  };
 
-  prevNumber   = currNumber;
-  prevOperator = currOperator;
-  isResult     = true;
+  pushMemory(currNumber, currOperator);
 }
 
 // Display
 
 function refreshDisplay() {
-  document.getElementById("display").textContent = displayNumber.toDisplay();
+  document.getElementById("display").textContent = entry.toDisplay();
 }
 
-function DisplayNumber(number = 0) {
+function Entry(number = 0) {
   this.string = this.stringify(number);
 }
 
 // The following hodge-podge wrangles a number into a string suitable to
 // the calculator display.
 
-DisplayNumber.prototype.stringify = function(number) {
+Entry.prototype.stringify = function(number) {
 
   if (!Number.isFinite(number)) return "Infinity";
 
@@ -114,14 +121,13 @@ DisplayNumber.prototype.stringify = function(number) {
     // - Returns number in standard notation. String methods are used to convert
     //   the significand (i.e. the "1.234" part of "1.234e5") into standard
     //   notation. Decimal is removed, then re-inserted into proper location.
-    //   Terminal decimal points or decimal points and trailing zeroes are
-    //   removed. For example, "1.230000" with exponent of 2 => "123.0000" =>
-    //   "123".
+    //   Remove trailing zeroes. Remove terminal decimal. For example,
+    //   "1.230000" with exponent of 2 => "123.0000" => "123." => "123".
 
     let string = number.toExponential(MAX_DIGITS - 1).split("e")[0]
     string     = string.replace(".", "");
     string     = string.slice(0, exp + 1) + "." + string.slice(exp + 1);
-    string     = string.replace(/\.0*$/, "");
+    string     = string.replace(/0*$/, "").replace(/\.$/, "");
     return string;
 
   } else if (exp < 0) {
@@ -146,7 +152,7 @@ DisplayNumber.prototype.stringify = function(number) {
   };
 }
 
-DisplayNumber.prototype.toDisplay = function() {
+Entry.prototype.toDisplay = function() {
   if (this.string == "Infinity") {
     return pickOne(SNARKY_RESPONSES);
   } else if (this.string.includes("e")) {
@@ -157,27 +163,23 @@ DisplayNumber.prototype.toDisplay = function() {
   };
 }
 
-DisplayNumber.prototype.toNumber = function() {
+Entry.prototype.toNumber = function() {
   return Number(this.string);
 }
 
-DisplayNumber.prototype.reset = function() {
-  this.string = "0";
-}
-
-DisplayNumber.prototype.isNegative = function() {
+Entry.prototype.isNegative = function() {
   return this.string[0] == "-";
 }
 
-DisplayNumber.prototype.hasDecimal = function() {
+Entry.prototype.hasDecimal = function() {
   return this.string.includes(".");
 }
 
-DisplayNumber.prototype.digitCount = function() {
+Entry.prototype.digitCount = function() {
   return this.string.replace("-", "").replace(".", "").length;
 }
 
-DisplayNumber.prototype.togglePlusMinus = function() {
+Entry.prototype.togglePlusMinus = function() {
   if (this.isNegative()) {
     this.string = this.string.slice(1);
   } else if (this.string != "0") {
@@ -185,11 +187,11 @@ DisplayNumber.prototype.togglePlusMinus = function() {
   };
 }
 
-DisplayNumber.prototype.appendDecimal = function() {
+Entry.prototype.appendDecimal = function() {
   if (!this.hasDecimal()) this.string += ".";
 }
 
-DisplayNumber.prototype.appendDigit = function(digit) {
+Entry.prototype.appendDigit = function(digit) {
   if (this.string == "0") {
     this.string = digit;
   } else if (this.digitCount() + 1 <= MAX_DIGITS) {
@@ -228,6 +230,52 @@ function divide(a, b) {
   return a / b;
 }
 
+// Modes
+
+function switchToInputMode() {
+  if (mode != "input") {
+    mode = "input";
+    clearEntry();
+    setClearKeyToClearEntry();
+  };
+}
+
+function switchToOutputMode() {
+  if (mode != "output") {
+    mode = "output";
+  }
+}
+
+// Clear
+
+function clearEntry() {
+  entry = new Entry();
+}
+
+function setEntry(number) {
+  entry = new Entry(number);
+}
+
+function setClearKeyToAllClear() {
+  document.getElementById("clear").textContent = "AC";
+}
+
+function setClearKeyToClearEntry() {
+  document.getElementById("clear").textContent = "CE";
+}
+
+// Memory
+
+function clearMemory() {
+  prevNumber   =    0;
+  prevOperator = null;
+}
+
+function pushMemory(newNumber, newOperator) {
+  prevNumber   = newNumber;
+  prevOperator = newOperator;
+}
+
 // Helpers
 
 function pickOne(array) {
@@ -235,7 +283,7 @@ function pickOne(array) {
   return array.at(index);
 }
 
-const MAX_DIGITS = 9; // just the digits, not decimal or minus sign
+const MAX_DIGITS = 11; // just the digits, not decimal or minus sign
 
 const SNARKY_RESPONSES = [
   ":(",
@@ -255,12 +303,12 @@ const SNARKY_RESPONSES = [
   "UMMM...NO"
 ].filter(response => response.length <= MAX_DIGITS + 2);
 
+let mode;
+let entry;
+let prevNumber;
+let prevOperator; 
 
-let displayNumber = new DisplayNumber();
-let prevNumber    = null;
-let prevOperator  = null;
-let isResult      = false;
-
+clearEntry();
+clearMemory();
 refreshDisplay();
-
-document.getElementById("keys").addEventListener("click", onClickKeys);
+initializeListeners();
