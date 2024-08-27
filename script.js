@@ -1,69 +1,90 @@
 // Events
 
 function initializeListeners() {
-  document.getElementById("keys").addEventListener("click", onClickKeys);
+  document.getElementById("keys").addEventListener("click", onClick);
+  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("keyup", onKeyUp);
 }
 
-function onClickKeys(event) {
+function onClick(event) {
   const key = event.target;
 
-  switch (key.textContent) {
-    case "AC":
-      onClickAllClear();
+  switch (key.id) {
+    case "clear":
+      onClear();
       break;
-    case "CE":
-      onClickClearEntry();
+    case "plus-minus":
+      onPlusMinus();
       break;
-    case "+/-":
-      onClickPlusMinus();
-      break;
-    case ".":
-      onClickDecimal();
+    case "decimal":
+      onDecimal();
       break;
     default:
-      if (key.classList.contains(   "digit")) onClickDigit(event);
-      if (key.classList.contains("operator")) onClickOperator(event);
+      if (key.classList.contains(   "digit")) onDigit(key.textContent);
+      if (key.classList.contains("operator")) onOperator(key.id);
   };
 }
 
-function onClickAllClear() {
+function onKeyDown(event) {
+  const id = SHORTCUT_KEYS[event.key];
+  if (id == null) return;
+  const elem = document.getElementById(id);
+  elem.classList.add("active");
+  elem.click();
+}
+
+function onKeyUp(event) {
+  const id = SHORTCUT_KEYS[event.key];
+  if (id == null) return;
+  const elem = document.getElementById(id);
+  elem.classList.remove("active");
+}
+
+function onClear() {
+  if (document.getElementById("clear").textContent == "AC") {
+    onAllClear();
+  } else {
+    onClearEntry();
+  };
+}
+
+function onAllClear() {
   clearMemory();
   refreshDisplay();
 }
 
-function onClickClearEntry() {
-  clearEntry();
+function onClearEntry() {
+  clearDisplay();
   refreshDisplay();
   setClearKeyToAllClear();
 }
 
-function onClickPlusMinus() {
-  entry.togglePlusMinus();
+function onPlusMinus() {
+  display.togglePlusMinus();
   refreshDisplay();
 }
 
-function onClickDecimal() {
+function onDecimal() {
   switchModeToInput();
-  entry.appendDecimal();
+  display.appendDecimal();
   refreshDisplay();
 }
 
-function onClickDigit(event) {
-  const digit = event.target.textContent;
+function onDigit(digit) {
   switchModeToInput();
-  entry.appendDigit(digit);
+  display.appendDigit(digit);
   refreshDisplay();
 }
 
-function onClickOperator(event) {
+function onOperator(operator) {
   if (currOperator != null) return;
 
-  currOperator = event.target.id;
-  currNumber   = entry.toNumber();
+  currOperator = operator;
+  currNumber   = display.toNumber();
 
   if (prevOperator) {
     currNumber = operate(prevOperator, prevNumber, currNumber);
-    setEntry(currNumber);
+    setDisplay(currNumber);
     refreshDisplay();
   };
 
@@ -77,7 +98,7 @@ function switchModeToInput() {
 
   mode = "input";
   pushMemory();
-  clearEntry();
+  clearDisplay();
   setClearKeyToClearEntry();
 }
 
@@ -102,21 +123,52 @@ function pushMemory() {
   currOperator = null;
 }
 
+// Clear
+
+function setClearKeyToAllClear() {
+  document.getElementById("clear").textContent = "AC";
+}
+
+function setClearKeyToClearEntry() {
+  document.getElementById("clear").textContent = "CE";
+}
 
 // Display
 
 function refreshDisplay() {
-  document.getElementById("display").textContent = entry.toDisplay();
+  document.getElementById("display").textContent = getDisplayLine();
 }
 
-function Entry(number = 0) {
+function getDisplayLine() {
+  if (display.isInfinite()) {
+    return pickOne(SNARKY_RESPONSES);
+  } else if (display.isExponential()) {
+    return display.string;
+  } else if (display.hasDecimal()) {
+    return display.string;
+  } else {
+    return display.string + ".";
+  };
+}
+
+function clearDisplay() {
+  display = new Display();
+}
+
+function setDisplay(number) {
+  display = new Display(number);
+}
+
+// Display Object
+
+function Display(number = 0) {
   this.string = this.stringify(number);
 }
 
 // The following hodge-podge wrangles a number into a string suitable to
 // the calculator display.
 
-Entry.prototype.stringify = function(number) {
+Display.prototype.stringify = function(number) {
 
   if (!Number.isFinite(number)) return "Infinity";
 
@@ -198,35 +250,31 @@ Entry.prototype.stringify = function(number) {
   };
 }
 
-Entry.prototype.toDisplay = function() {
-  if (!Number.isFinite(this.toNumber())) {
-    return pickOne(SNARKY_RESPONSES);
-  } else if (this.string.includes("e")) {
-    return this.string;
-  } else {
-    let string = this.string
-    if (!this.hasDecimal() && TERMINAL_DECIMAL) string += ".";
-    return string;
-  };
-}
-
-Entry.prototype.toNumber = function() {
+Display.prototype.toNumber = function() {
   return Number(this.string);
 }
 
-Entry.prototype.isNegative = function() {
+Display.prototype.isNegative = function() {
   return this.string[0] == "-";
 }
 
-Entry.prototype.hasDecimal = function() {
+Display.prototype.isInfinite = function() {
+  return this.string == "Infinity" || this.string == "-Infinity";
+}
+
+Display.prototype.isExponential = function() {
+  return this.string.includes("e");
+}
+
+Display.prototype.hasDecimal = function() {
   return this.string.includes(".");
 }
 
-Entry.prototype.digitCount = function() {
+Display.prototype.digitCount = function() {
   return this.string.replace("-", "").replace(".", "").length;
 }
 
-Entry.prototype.togglePlusMinus = function() {
+Display.prototype.togglePlusMinus = function() {
   if (this.isNegative()) {
     this.string = this.string.slice(1);
   } else if (this.string != "0") {
@@ -234,11 +282,11 @@ Entry.prototype.togglePlusMinus = function() {
   };
 }
 
-Entry.prototype.appendDecimal = function() {
+Display.prototype.appendDecimal = function() {
   if (!this.hasDecimal()) this.string += ".";
 }
 
-Entry.prototype.appendDigit = function(digit) {
+Display.prototype.appendDigit = function(digit) {
   if (this.string == "0") {
     this.string = digit;
   } else if (this.digitCount() + 1 <= MAX_DIGITS) {
@@ -277,24 +325,6 @@ function divide(a, b) {
   return a / b;
 }
 
-// Clear
-
-function clearEntry() {
-  entry = new Entry();
-}
-
-function setEntry(number) {
-  entry = new Entry(number);
-}
-
-function setClearKeyToAllClear() {
-  document.getElementById("clear").textContent = "AC";
-}
-
-function setClearKeyToClearEntry() {
-  document.getElementById("clear").textContent = "CE";
-}
-
 // Helpers
 
 function pickOne(array) {
@@ -303,8 +333,6 @@ function pickOne(array) {
 }
 
 const MAX_DIGITS       = 11;   // just the digits, not decimal or minus sign
-const TERMINAL_DECIMAL = true; 
-
 const SNARKY_RESPONSES = [
   ":(",
   "A BAJILLION?",
@@ -329,14 +357,37 @@ const SNARKY_RESPONSES = [
   "WHO CARES?"
 ].filter(response => response.length <= MAX_DIGITS + 2);
 
+const SHORTCUT_KEYS = {
+  "c":      "clear",
+  "C":      "clear",
+  "0":      "zero",
+  "1":      "one",
+  "2":      "two",
+  "3":      "three",
+  "4":      "four",
+  "5":      "five",
+  "6":      "six",
+  "7":      "seven",
+  "8":      "eight",
+  "9":      "nine",
+  ".":      "decimal",
+  "+":      "plus",
+  "-":      "minus",
+  "*":      "times",
+  "/":      "divide-by",
+  "=":      "equals",
+  "Enter":  "equals",
+  "Escape": "clear",
+}
+
 let mode;
-let entry;
+let display;
 let currNumber;
 let prevNumber;
 let currOperator;
 let prevOperator; 
 
-clearEntry();
+clearDisplay();
 clearMemory();
 refreshDisplay();
 initializeListeners();
