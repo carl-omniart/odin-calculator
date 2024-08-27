@@ -199,7 +199,7 @@ Entry.prototype.stringify = function(number) {
 }
 
 Entry.prototype.toDisplay = function() {
-  if (this.string == "Infinity") {
+  if (!Number.isFinite(this.toNumber())) {
     return pickOne(SNARKY_RESPONSES);
   } else if (this.string.includes("e")) {
     return this.string;
@@ -307,21 +307,26 @@ const TERMINAL_DECIMAL = true;
 
 const SNARKY_RESPONSES = [
   ":(",
-  "A BAJILLION",
-  "A HEADACHE",
+  "A BAJILLION?",
   "ASK LATER",
+  "BEATS ME",
   "BLESS UR <3",
   "EGADS!",
+  "FACEPALM",
   "GO FISH",
   "LOL",
-  "MY OH MY",
+  "MATH IS HARD",
+  "MORE THAN 3",
+  "MY HEAD HURTS",
   "NO, JUST NO",
   "PLATYPUS",
   "PLZ STOP",
   "REALLY?",
   "REPLY HAZY",
+  "SHYEAH RIGHT",
   "TRY AGAIN",
-  "UMMM...NO"
+  "UMMM...NO",
+  "WHO CARES?"
 ].filter(response => response.length <= MAX_DIGITS + 2);
 
 let mode;
