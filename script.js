@@ -94,12 +94,12 @@ function onOperator(operator) {
 // Modes
 
 function switchModeToInput() {
+  setClearKeyToClearEntry();
   if (mode == "input") return;
 
   mode = "input";
   pushMemory();
   clearDisplay();
-  setClearKeyToClearEntry();
 }
 
 function switchModeToOutput() {
