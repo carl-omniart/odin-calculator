@@ -21,13 +21,12 @@ function onClickKeys(event) {
       onClickDecimal();
       break;
     default:
-      if (key.classList.contains("operator")) onClickOperator(event);
       if (key.classList.contains(   "digit")) onClickDigit(event);
+      if (key.classList.contains("operator")) onClickOperator(event);
   };
 }
 
 function onClickAllClear() {
-  clearEntry();
   clearMemory();
   refreshDisplay();
 }
@@ -44,24 +43,23 @@ function onClickPlusMinus() {
 }
 
 function onClickDecimal() {
-  switchToInputMode();
+  switchModeToInput();
   entry.appendDecimal();
   refreshDisplay();
 }
 
 function onClickDigit(event) {
   const digit = event.target.textContent;
-
-  switchToInputMode();
+  switchModeToInput();
   entry.appendDigit(digit);
   refreshDisplay();
 }
 
 function onClickOperator(event) {
-  if (mode == "output") return;
+  if (currOperator != null) return;
 
-  let currOperator = event.target.id;
-  let currNumber   = entry.toNumber();
+  currOperator = event.target.id;
+  currNumber   = entry.toNumber();
 
   if (prevOperator) {
     currNumber = operate(prevOperator, prevNumber, currNumber);
@@ -69,14 +67,41 @@ function onClickOperator(event) {
     refreshDisplay();
   };
 
-  if (currOperator == "equals") {
-    currOperator = null;
-  } else {
-    switchToOutputMode();
-  };
-
-  pushMemory(currNumber, currOperator);
+  switchModeToOutput();
 }
+
+// Modes
+
+function switchModeToInput() {
+  if (mode == "input") return;
+
+  mode = "input";
+  pushMemory();
+  clearEntry();
+  setClearKeyToClearEntry();
+}
+
+function switchModeToOutput() {
+  mode = "output";
+  if (currOperator == "equals") clearMemory();
+}
+
+// Memory
+
+function clearMemory() {
+  currNumber   = null;
+  currOperator = null;
+  prevNumber   = null;
+  prevOperator = null;
+}
+
+function pushMemory() {
+  prevNumber   = currNumber;
+  prevOperator = currOperator;
+  currNumber   = null;
+  currOperator = null;
+}
+
 
 // Display
 
@@ -100,54 +125,75 @@ Entry.prototype.stringify = function(number) {
 
   const exp = Number(number.toExponential().split("e")[1]);
   
-  if (exp < (1 - MAX_DIGITS) || MAX_DIGITS <= exp) {
+  if (exp <= -MAX_DIGITS || MAX_DIGITS <= exp) {
     
     // Out of Range Numbers
-    // - Numbers with negative exponents (i.e. numbers that begin "0.") have one
-    //   fewer display digit available due to the leading zero.
+    // - If MAX_DIGITS is 3, then the highest in-range whole number is 9.99e2
+    //   => 999, and the lowest in-range decimal is 1.0e-2 => 0.01.
     // - Returns number in exponential notation. From available display digits,
     //   four are given to the exponent ("e", "-", and two digits for value),
     //   and one is given to the digit before the decimal point. This leaves
     //   MAX_DIGITS - 5 for fractional digits.
     
-    const string = number.toExponential(MAX_DIGITS - 5);
+    let string = number.toExponential(MAX_DIGITS - 5);
     return string;
 
   } else if (exp >= 0) {
 
     // In-Range Numbers, absolute value >= 1
-    // - From available display digits, one is given to the digit before the
-    //   decimal point, leaving MAX_DIGITS - 1 for fractional digits.
-    // - Returns number in standard notation. String methods are used to convert
-    //   the significand (i.e. the "1.234" part of "1.234e5") into standard
-    //   notation. Decimal is removed, then re-inserted into proper location.
-    //   Remove trailing zeroes. Remove terminal decimal. For example,
-    //   "1.230000" with exponent of 2 => "123.0000" => "123." => "123".
+    // - Returns number in standard notation, using string methods.
+    //   1. Get number in exponential notation: "-1.230000e2".
+    //      - Significant digits include the digit before the decimal (1) and
+    //        the fractional digits after the decimal point ("230000"). Thus
+    //        the number of fractional digits = MAX_DIGITS - 1.
+    //   2. Remove exponent: "-1.230000".
+    //   3. Extract minus sign, if present: minus = "" or "-".
+    //   4. Remove minus sign: "1.230000".
+    //   5. Remove decimal: "1230000".
+    //   6. Insert decimal into new location: "123.0000"
+    //   7. Append extracted minus sign to front: "-123.0000".
+    //   8. Remove trailing zeroes, if present: "-123.".
+    //   9. Remove terminal decimal, if present; "-123".
 
-    let string = number.toExponential(MAX_DIGITS - 1).split("e")[0]
-    string     = string.replace(".", "");
-    string     = string.slice(0, exp + 1) + "." + string.slice(exp + 1);
-    string     = string.replace(/0*$/, "").replace(/\.$/, "");
+    let string;
+    let minus;
+    string = number.toExponential(MAX_DIGITS - 1);                   // 1
+    string = string.replace(/e.*$/, "");                             // 2
+    minus  = string[0] == "-" ? "-" : "";                            // 3
+    string = string.replace("-", "").replace(".", "");               // 4 5
+    string = string.slice(0, exp + 1) + "." + string.slice(exp + 1); // 6
+    string = minus + string.replace(/0*$/, "").replace(/\.$/, "");   // 7 8 9
     return string;
 
   } else if (exp < 0) {
 
     // In-Range Number, absolute value < 1
-    // - From available display digits, the absolute value of the exponent
-    //   ennumerates the number to be allocated to leading zeroes (1.23e3 =>
-    //   0.00123). Because all exponents are negative, this leaves MAX_DIGITS +
-    //   exp for fractional digits.
-    // - Returns the number in standard notation. String methods are used to
-    //   convert the significand (i.e. the "1.234" part or "1.234e-5") into
-    //   standard notation. Front of string is padded with zeroes. Trailing
-    //   zeroes are removed. Decimal is removed, then re-inserted into proper
-    //   location. For example, "1.230000" with exponent of -2 => "001.230000"
-    //    => "001.23" => "0.0123".
+    // - Returns the number in standard notation, using string methods.
+    //   1. Get number in exponential notation: "-1.230000e-2".
+    //      - The absolute value of the exponent equals the number of 
+    //        display digits used by leading zeroes (1.23e-3 => 0.00123).
+    //        This leaves MAX_DIGITS - abs(exp) for significant digits and
+    //        MAX_DIGITS - abs(exp) - 1 for fractional digits. Because all
+    //        exponents here are negative, abs(exp) == -exp, and MAX_DIGITS -
+    //        abs(exp) - 1 == MAX_DIGITS + exp - 1.
+    //   2. Remove exponent: "-1.230000".
+    //   3. Extract minus sign, if present: minus = "" or "-".
+    //   4. Remove minus sign: "1.230000".
+    //   5. Remove decimal: "1230000".
+    //   6. Pad front with zeroes: "001230000".
+    //   7. Insert decimal after first zero: "0.01230000".
+    //   8. Append extracted minus sign to front: "-0.01230000".
+    //   9. Remove trailing zeros: "0.0123".
 
-    let string = number.toExponential(MAX_DIGITS + exp).split("e")[0]
-    string     = string.padStart(MAX_DIGITS + 2, "0");
-    string     = string.replace(/0*$/, "").replace(".", "");
-    string     = string.slice(0, 1) + "." + string.slice(1);
+    let string;
+    let minus;
+    string = number.toExponential(MAX_DIGITS + exp - 1)   // 1
+    string = string.replace(/e.*$/, "")                   // 2
+    minus  = string[0] == "-" ? "-" : "";                 // 3
+    string = string.replace("-", "").replace(".", "");    // 4 5
+    string = string.padStart(MAX_DIGITS, "0");            // 6
+    string = string.slice(0, 1) + "." + string.slice(1);  // 7
+    string = minus + string.replace(/0*$/, "");           // 8 9
     return string;
   };
 }
@@ -158,7 +204,8 @@ Entry.prototype.toDisplay = function() {
   } else if (this.string.includes("e")) {
     return this.string;
   } else {
-    const string = (this.hasDecimal()) ? this.string : (this.string + ".")
+    let string = this.string
+    if (!this.hasDecimal() && TERMINAL_DECIMAL) string += ".";
     return string;
   };
 }
@@ -230,22 +277,6 @@ function divide(a, b) {
   return a / b;
 }
 
-// Modes
-
-function switchToInputMode() {
-  if (mode != "input") {
-    mode = "input";
-    clearEntry();
-    setClearKeyToClearEntry();
-  };
-}
-
-function switchToOutputMode() {
-  if (mode != "output") {
-    mode = "output";
-  }
-}
-
 // Clear
 
 function clearEntry() {
@@ -264,18 +295,6 @@ function setClearKeyToClearEntry() {
   document.getElementById("clear").textContent = "CE";
 }
 
-// Memory
-
-function clearMemory() {
-  prevNumber   =    0;
-  prevOperator = null;
-}
-
-function pushMemory(newNumber, newOperator) {
-  prevNumber   = newNumber;
-  prevOperator = newOperator;
-}
-
 // Helpers
 
 function pickOne(array) {
@@ -283,7 +302,8 @@ function pickOne(array) {
   return array.at(index);
 }
 
-const MAX_DIGITS = 11; // just the digits, not decimal or minus sign
+const MAX_DIGITS       = 11;   // just the digits, not decimal or minus sign
+const TERMINAL_DECIMAL = true; 
 
 const SNARKY_RESPONSES = [
   ":(",
@@ -296,6 +316,7 @@ const SNARKY_RESPONSES = [
   "LOL",
   "MY OH MY",
   "NO, JUST NO",
+  "PLATYPUS",
   "PLZ STOP",
   "REALLY?",
   "REPLY HAZY",
@@ -305,7 +326,9 @@ const SNARKY_RESPONSES = [
 
 let mode;
 let entry;
+let currNumber;
 let prevNumber;
+let currOperator;
 let prevOperator; 
 
 clearEntry();
